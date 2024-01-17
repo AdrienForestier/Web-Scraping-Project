@@ -105,7 +105,7 @@ def count_color_slopes(ski_counts):
 
 def main():
     #Graphs sur le Ski dans toute la France 
-   
+    #test
 
     st.markdown("<h1 style='text-align: center;'>Ski France</h1>", unsafe_allow_html=True)
     all_stations_daily_counts = calculate_daily_counts_all()
