@@ -18,9 +18,10 @@ import warnings
 
 st.set_page_config(layout="wide")
 @st.cache_data
+#Chargement des données.
 def load_combined_df():
     global combined_df
-    combined_df = pd.read_csv("C:/Users/willi/Desktop/Lumiplan_formatted_flocon (2).csv")
+    combined_df = pd.read_csv("C:/Users/willi/Desktop/Lumiplan_formatted_flocon (2).csv") #Changer le path des données ici
     combined_df['Pistes'] = combined_df['Pistes'].apply(ast.literal_eval)
     combined_df['Remontées'] = combined_df['Remontées'].apply(ast.literal_eval)
     combined_df['detail'] = combined_df['detail'].apply(ast.literal_eval)
@@ -30,6 +31,7 @@ def load_combined_df():
 
 combined_df = load_combined_df()
 
+# On calcule le nombre de pistes de ski ouverte ou fermée en fonction des couleurs de piste sur un dataframe filtré sur une station en particulier
 def calculate_daily_counts(df, column_name, selected_station):
     filtered_df = df[df[column_name] == selected_station]
 
@@ -52,6 +54,7 @@ def calculate_daily_counts(df, column_name, selected_station):
 
     return daily_counts
 
+# On calcule le nombre de pistes de ski ouverte ou fermée en fonction des couleurs de piste sur tout le dataset
 def calculate_daily_counts_all():
 
     daily_counts = combined_df.groupby('scrap_date')['Ski_Counts'].agg(
@@ -72,6 +75,8 @@ def calculate_daily_counts_all():
     daily_counts[['Open', 'Closed', 'Green_closed', 'Green_open', 'Blue_closed', 'Blue_open', 'Red_closed', 'Red_open', 'Black_closed', 'Black_open']] = pd.json_normalize(daily_counts['Ski_Counts'])
 
     return daily_counts
+
+# On calcule le nombre de remontée mécanique ouverte ou fermée de tout le dataset
 def calculate_daily_remontee():
     daily_counts = combined_df.groupby('scrap_date')['remontee_Counts'].agg(
         lambda x: {
@@ -82,6 +87,7 @@ def calculate_daily_remontee():
     daily_counts[['Open_remontee', 'Closed_remontee']] = pd.json_normalize(daily_counts['remontee_Counts'])
     return daily_counts
 
+# On calcule le nombre de remontée mécanique ouverte ou fermée de tout le dataset d'une station en particulier
 def calculate_daily_remontee_station(df, column_name, selected_station):
     filtered_df = df[df[column_name] == selected_station]
     daily_counts = filtered_df.groupby('scrap_date')['remontee_Counts'].agg(
@@ -93,6 +99,7 @@ def calculate_daily_remontee_station(df, column_name, selected_station):
     daily_counts[['Open_remontee', 'Closed_remontee']] = pd.json_normalize(daily_counts['remontee_Counts'])
     return daily_counts
 
+# On compte le nombre de piste sans distinction de fermeture ou d'ouverture de piste
 def count_color_slopes(ski_counts):
     color_counts = {'Green': 0, 'Blue': 0, 'Red': 0, 'Black': 0}
 
@@ -104,9 +111,8 @@ def count_color_slopes(ski_counts):
     return color_counts
 
 def main():
-    #Graphs sur le Ski dans toute la France 
-    #test
 
+    #Couleur pour les courbe des graphs pour chaque type de piste
     color_mapping = {
     'Open': 'yellow',
     'Closed': 'darkgoldenrod',
@@ -120,6 +126,8 @@ def main():
     'Black_open': 'gray',
     }
 
+    #Graph pour voir l'ouverture et la fermeture des pistes de ski par couleur en France
+
     st.markdown("<h1 style='text-align: center;'>Le Ski en France</h1>", unsafe_allow_html=True)
     all_stations_daily_counts = calculate_daily_counts_all()
 
@@ -127,24 +135,24 @@ def main():
                 title="Evolution de l'ouverture et fermeture des pistes de skis par couleur",color_discrete_map=color_mapping,width=1300)
     fig_all_stations.update_layout(xaxis_title='Date', yaxis_title='Count', legend_title='Status',title_font=dict(size=20), xaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),yaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),legend=dict(font=dict(size=20)) )
 
-    #   st.plotly_chart(fig_all_stations)
+    #Graph pour voir l'ouverture et la fermeture des remontées de ski en France
 
     all_remontee_daily_counts = calculate_daily_remontee()
     fig = px.line(all_remontee_daily_counts, x='scrap_date', y=['Open_remontee', 'Closed_remontee'], title="Evolution de l'ouverture des remontées mécaniques")
     fig.update_layout(xaxis_title='Date', yaxis_title='Count', legend_title='Status',title_font=dict(size=20), xaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),yaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),legend=dict(font=dict(size=20)))
     
+
+    #on divise en deux colonne une colonne par graph
     col1, col2 = st.columns((2))  
     
-
+    #on print les graphs sur streamlit
     with col1:
         st.plotly_chart(fig_all_stations,use_container_width=False)
-
-    
     with col2:
         st.plotly_chart(fig,use_container_width=True)
 
 
-    #Graph sur une station en particulier
+    #Graphs sur une station en particulier
     st.markdown("<h1 style='text-align: center;'>Information sur une station en particulier</h1>", unsafe_allow_html=True)
     sorted_stations = combined_df.groupby('station_name')['nombre_flocon_vert'].sum().sort_values(ascending=False).index
 
@@ -157,6 +165,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
+    #la selectbox qui permet de selectionner une station en particulier.
     st.markdown("<h3>Choisissez une station avec un flocon vert ou plus !</h3>", unsafe_allow_html=True)
     def format_station(station):
         flocon_count = combined_df.loc[combined_df['station_name'] == station, 'nombre_flocon_vert'].iloc[0]
@@ -168,38 +177,37 @@ def main():
         else:
             return station
 
-    # Create the selectbox with the custom format function
     selected_station = st.selectbox('', sorted_stations, format_func=format_station)
-
     selected_station_daily_counts = calculate_daily_counts(combined_df, 'station_name', selected_station)
 
-    #Piste ski
+
+    
+    #Graph pour voir l'ouverture et la fermeture des pistes de ski par couleur en fonction de la station selectionnée
     fig_selected_station = px.line(selected_station_daily_counts, x='scrap_date', y=['Open', 'Closed', 'Green_closed', 'Green_open', 'Blue_closed', 'Blue_open', 'Red_closed', 'Red_open', 'Black_closed', 'Black_open'],
                 title=f"Evolution de l'ouverture des pistes de skis à {selected_station} par couleur",color_discrete_map=color_mapping)
     fig_selected_station.update_layout(xaxis_title='Date', yaxis_title='Nombre', legend_title='Status',title_font=dict(size=20), xaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),yaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),legend=dict(font=dict(size=20)))
-    #st.plotly_chart(fig_selected_station)
 
-    #Remontee mécanique
+
+    #Graph pour voir l'ouverture et la fermeture des remontées mécaniques de ski en fonction de la station selectionnée
     selected_remontee_daily_counts = calculate_daily_remontee_station(combined_df, 'station_name', selected_station)
     fig = px.line(selected_remontee_daily_counts, x='scrap_date', y=['Open_remontee', 'Closed_remontee'],title=f"Evolution de l'ouverture des remontées mécaniques à {selected_station}")
     fig.update_layout(xaxis_title='Date', yaxis_title='Nombre', legend_title='Status',title_font=dict(size=20), xaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),yaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),legend=dict(font=dict(size=20)))
     
-    #st.plotly_chart(fig)
     color_mapping = {
     'Green': 'green',
     'Blue': 'blue',
     'Red': 'red',
     'Black': 'black',}
-    #
+
+    #Graph affichant le nombre de piste de ski par type présent sur la station
     df2 = combined_df[combined_df["station_name"] == selected_station]
     color_count = count_color_slopes(df2["Ski_Counts"].iloc[0])
     fig_color_counts = px.bar(x=list(color_count.keys()), y=list(color_count.values()), color=list(color_count.keys()),color_discrete_map=color_mapping)
     fig_color_counts.update_layout(xaxis_title='couleur de piste', yaxis_title='Nombre', title=f"Nombre de pistes de skis bleu,rouge,verte,noir à {selected_station}",title_font=dict(size=20), xaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),yaxis=dict(title_font=dict(size=20),tickfont=dict(size=20),),legend=dict(font=dict(size=20)))
-    #st.plotly_chart(fig_color_counts)
 
     col1, col2,col3 = st.columns((3)) 
     
-    
+    #on print tout les graphs dans le streamlit
     with col1:
         st.plotly_chart(fig_selected_station, use_container_width=True)
 
@@ -213,6 +221,7 @@ def main():
 
     flocon_vert_count = df2['nombre_flocon_vert'].iloc[0]
 
+    #Si la station est certifiée Flocon vert on affiche bon choix et une image montrant le flocon vert
     if flocon_vert_count != 0:
         st.markdown(
             f"<h1 style='text-align: center;'>La station {selected_station} est certifiée Flocon Vert avec : {flocon_vert_count} flocon ! Bon choix de destination !</h1>",
@@ -223,18 +232,15 @@ def main():
             <img src='https://www.saintfrancoislongchamp.com/content/uploads/2022/03/logo-flocon-vert-263x300.png' style='max-width: 100%; max-height: 100%;'>
         </div>
         """, unsafe_allow_html=True)
+
+    #Sinon on affiche une liste de station qui est certifiée flocon vert
     else:
-        # First row: Title, image, list of random stations
-        
-        # Display random stations
         non_zero_flocon_vert_stations = combined_df[combined_df['nombre_flocon_vert'] != 0]
-        # Ensure that there are at least 5 unique stations
         unique_stations = set()
         while len(unique_stations) < 5:
             random_stations = random.sample(list(non_zero_flocon_vert_stations['station_name']), 5)
             unique_stations = set(random_stations)
 
-        # Sort stations based on flocon vert count in descending order
         sorted_stations = sorted(unique_stations, key=lambda station: non_zero_flocon_vert_stations.loc[non_zero_flocon_vert_stations['station_name'] == station, 'nombre_flocon_vert'].iloc[0], reverse=True)
 
         st.markdown(f"""
@@ -246,8 +252,6 @@ def main():
                 </div>
             </div>
         """, unsafe_allow_html=True)
-
-        # Second row: Title and image
       
 
 
