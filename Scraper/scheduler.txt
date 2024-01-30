@@ -1,0 +1,2 @@
+30 13 * * * /usr/bin/python3 /home/ec2-user/scraping/scrap_meteo.py
+
